@@ -1,0 +1,105 @@
+---
+title: Iteration Practice
+subtitle: Analysis of Pokemon Data
+date: "March 5, 2021"
+output: 
+  html_document: 
+    fig_height: 3.5
+    fig_width: 7
+    theme: yeti
+    toc: true
+    toc_float: true
+---
+
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(purrr)  
+library(janitor)
+```
+
+
+For this practice, we are going to explore a Pokemon data set from Kaggle that appeared in a previous year as a dataset of the day (https://www.kaggle.com/nayansolanki2411/world-of-pokemon).  
+
+### 1. Reading the data
+
+0. First read the data into a data frame called **pokemon** and use the **janitor** package to clean up the names.    
+
+```{r}
+pokemon <- read_csv("data/Pokemon.csv") %>% clean_names()
+names(pokemon)
+```
+
+For the questions which follow, it will be convenient to also have Pokemon data frames consisting only of double (numeric) and only categorical (aside from name).  The following commands show one way of doing this.
+
+```{r}
+pokemon_dbl <- pokemon %>% select_if(is_double)
+pokemon_fac <- pokemon %>% select(3:4)
+glimpse(pokemon_dbl)
+glimpse(pokemon_fac)
+```
+
+
+### 2. Using loops 
+
+1. Write a for loop that calculates the mean of each variable in `pokemon_dbl`.  
+
+```{r}
+output  <- vector("double", ncol(pokemon_dbl)) 
+for (i in seq_along(pokemon_dbl)) {
+  output[[i]] <- mean(pokemon_dbl[[i]])
+}
+output
+```
+
+
+2. The function `fivenum()` calculates the five-number summary of a vector, consisting of the Min, Q1, Median, Q3, and Maximum where Q1 and Q3 are the 25th and 75th percentiles. How would you modify your loop  above to store the five number summaries. Explore different approaches to storing the results.  
+
+```{r}
+output  <- vector("list", length(pokemon_dbl)) 
+for (i in seq_along(pokemon_dbl)) {
+  output[[i]] <- fivenum(pokemon_dbl[[i]])
+}
+output
+```
+
+
+3. Write a for loop that converts each of the two categorical variables into factors.  Your loop should work even if there were more than two columns.  Use `glimpse()` to check that you modified the variables as required. 
+
+```{r}
+output  <- vector("list", length(pokemon_fac)) 
+for (i in seq_along(pokemon_fac)) {
+  output[[i]] <- factor(pokemon_fac[[i]])
+}
+glimpse(output)
+```
+
+### 3. Using purrr  
+
+Repeat 1-3 using appropriate functions from the **purrr** package instead of loops. Which do you prefer and why?  
+
+```{r}
+library(purrr)
+map_dbl(pokemon_dbl, median)
+map(pokemon_dbl, fivenum)
+map_df(pokemon_fac, factor)
+```
+
+
+### 4. Just for fun: A Quick Intro to plotly  
+
+I have installed the **plotly** package for interactive graphics in this project space. (Google it if you'd like to know more). I noticed someone had used it for a Pokemon analysis (https://www.kaggle.com/nayansolanki2411/world-of-pokemon)  on Kaggle and thought you might like to get a taste. Below is a line of code for you to run. Explore the plot it produces. From what we've done with **ggplot2** and elsewhere, you should be able to make good sense of the code. Play around with the code to see what other interesting plots you can come up with for the **pokemon** data.  (Note that such interactive plots can be built into Shiny web apps for truly interactive data exploration.)
+
+```{r}
+# No solutions here. Just some things to try.
+library(plotly)
+plot_ly(pokemon,x=~sp_def,y=~sp_atk,type="scatter",mode="markers",size=~total,color = ~legendary,text=~name)
+
+p <- ggplot(pokemon, aes(y=attack, x= defense )) +
+  geom_point(aes(color = factor(generation)))
+
+
+ggplotly(p)
+```
+

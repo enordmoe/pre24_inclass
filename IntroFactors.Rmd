@@ -1,0 +1,46 @@
+---
+title: "Introduction to Factors in R"
+subtitle: "Chapter 15"
+author: "Your Name Here"
+output: 
+  github_document: 
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+# cache = TRUE should speed knitting by making use of
+# calculations from previous knits
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(forcats)
+```
+
+
+### 1. Importing the Data 
+
+The following chunk should read the Kaggle study data from my Math 265 `data` directory in the cloud. You will see some parsing issues which you may wish to explore at some point.  
+
+```{r, message = FALSE}
+ks_data <- read_csv(file = "http://people.kzoo.edu/enordmoe/math265/multipleChoiceResponses.csv")
+ks_data
+```
+
+### 2. Find a variable of interest  
+
+Use the [codebook](http://people.kzoo.edu/enordmoe/math265/schema.csv) (in csv format) or browse the variable names to identify a categorical variable you want to explore. Use the `factor()` command as illustrated in the notes to convert the character variable into a factor. If you're not sure what to look at, you could look at something about R use. Variables ending with "Select" were chosen from a given set of categories and may be easier to work with (but also might not give as much practice dealing with unruly factors!). 
+
+### 3. Inspect the variable  
+
+Inspect the variable you have selected. What are the factor levels? How many in each category? 
+
+Make a bar chart if the number of levels is not unreasonable. Study the order of the factor levels to determine whether reordering is necessary.  
+
+### 4. Practice using the   **forcats** commands  
+
+Use the **forcats** commands to reorder and graph your categorical variable. Show me an example of what you've been able to accomplish!
+
+

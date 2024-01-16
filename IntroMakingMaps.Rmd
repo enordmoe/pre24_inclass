@@ -1,0 +1,248 @@
+---
+title: "Introduction to Creating Maps with ggplot2"
+output: 
+  html_document: 
+    fig_height: 4
+    fig_width: 9
+    theme: yeti
+    toc: true
+    toc_float: true
+---
+
+
+### 1. Introduction
+In this tutorial we will make **choropleth maps**, sometimes called heat maps, using the `ggplot2` package. [Here](https://www.washingtonpost.com/blogs/worldviews/files/2013/03/openness2.jpg) is a typical though very intriguing example from the Washington Post and [here](https://timogrossenbacher.ch/wp-content/uploads/2016/12/tm-final-map-1-1.png) is a particularly beautiful example by Timo Grossenbacher. A choropleth map is a map that shows a geographic landscape with units such as countries, states, or watersheds where each unit is colored according to a variable of interest. 
+
+We start by loading the **tidyverse** packages and the **maps** package. The **maps** package simply contains several simple data files that allow us to create maps. 
+
+
+```{r message = FALSE}
+library(tidyverse)  # load all tidyverse packages
+library(maps)     # Provides latitude and longitude data for various maps
+```
+
+
+**Data**: In addition to data files from the **maps** package, we will use the  [StatePopulation](https://simple.wikipedia.org/wiki/List_of_U.S._states_by_population) data, which includes the **state name**, **estimated population**, and the **number of electoral college votes** each state is allocated.
+
+```{r}
+# load United States state map data
+main_states <- map_data("state")
+
+# read the state population data
+state_pop <- read_csv("data/StatePopulation.csv")
+
+glimpse(main_states) # See what this looks like
+glimpse(state_pop)
+```
+
+### 2. Making a base map
+
+Creating maps follows the same grammar of graphics structure as all other ggplots. Here we use the appropriate dataset (**MainStates**), geom(polygon), and aesthetics (latitude and longitude values) to create a base map.
+
+```{r}
+#plot all states with ggplot2, using black borders and darkorange fill
+# Hmm, that color scheme looks familiar
+ggplot(main_states) + 
+  geom_polygon(aes(x = long, y = lat, group = group),
+                color = "black", fill = "darkorange" )
+# Try using the hex color code #E25220 instead of "darkorange". Do you 
+# recognize the color scheme?
+```
+
+**Questions**:  
+
+On the first couple pages of the [maps package documentation](https://cran.r-project.org/web/packages/maps/maps.pdf), we see that in addition to `state`, the **maps** package includes `county`, `france`, `italy`, `nz`, `usa`, `world` and `world2` files.
+
+1) Follow the example above to create a base map of United States counties. Make sure you use the `map_data` function as well as the `ggplot` function.  
+
+```{r}
+
+
+```
+
+
+
+2) Use the `world` file to create a base map of the world with white borders and dark blue fill. 
+
+```{r}
+
+```
+
+
+3) Notice that the **main_states** file has a column titled "group". What happens to your base map when group is ignored (i.e. run the code `ggplot(main_states) + geom_polygon(aes(x=long, y=lat))`)?
+
+
+```{r}
+
+```
+
+
+
+### 3. Customizing your choropleth map
+
+Now that we have created a base map of the mainland states, we will color each state according to its population. The first step is to use relational data commands to merge the **main_states** and **state_pop** files. 
+
+
+```{r}
+# Merge the main_states and state_pop files
+# Why do we use inner_join instead of one of the others? Check what the others would give you, especially considering
+# filtering joins.
+merged_states <- inner_join(main_states, state_pop, by = "region")
+glimpse(merged_states)
+```
+
+Next we create a base map of the mainland United States, using state population as a fill variable.
+
+```{r}
+# Create a Choropleth map of the United States
+p <- ggplot(merged_states)
+p <- p + geom_polygon(aes(x = long, y = lat, group = group, fill = population/1000000), 
+          color = "white", size = 0.2) 
+p
+```
+
+**Remarks**
+
+* Instead of using `population`, we use `population/1000000`. Each state is colored by population size (in millions) to make the legend easier to read.  
+
+* Border color (white) and line thickness (0.2) are specifically defined within the `geom_polygon()`.
+
+Once a map is created, it is often helpful to modify color schemes, determine how to address missing values (`na.value`) and formalize labels. Notice that we assigned the graph a name, `p`. This is particularly useful as we add new components to the graph.
+
+```{r}
+p <- p + scale_fill_continuous(name = "Population(millions)", 
+            low = "lightgreen", high = "darkgreen",limits = c(0,40), 
+            breaks = c(5, 10, 15, 20, 25, 30, 35), na.value = "grey50") +
+          labs(title = "State Population in the Mainland United States")
+p
+```
+
+**Questions**:  
+
+4) What two columns were added to the **main_states** file when it was joined with the **state_population** file?
+
+
+
+5) Create a choropleth map showing state populations. Make the state borders purple with size = 1. Also change the color scale for state populations, with low populations colored white and states with high populations colored dark red.   
+
+
+```{r}
+
+```
+
+
+6) Modify the graph and legend in Question 5) to show the log of populations instead of the population in millions. In this map, explain why you will need to set new `limits` and `breaks`. *Hint: Create a map without setting specific `limits` and `breaks` values. How does the graph change?*
+
+
+
+The following code provides just a few more examples of how each map can be customized. The [ggplot2 website](https://ggplot2.tidyverse.org/) and the [Data Visualization Cheat Sheet](https://www.rstudio.com/resources/cheatsheets/) provide many additional detailed examples.
+
+The following code modifies the previous graph by modifying the height and thickness of the legend and by adjusting the color, size and angle of the legend text.
+
+```{r eval=FALSE}
+p <- p + guides(fill = guide_colorbar(barwidth = 0.5, barheight = 10, 
+                label.theme = element_text(color = "green", size = 10, angle = 45)))
+p
+```
+
+It is also possible to overlay two polygon maps. The code below creates county borders with a small line size and then adds a thicker line to represent state borders. The `alpha = .1` causes the fill in the state map to be transparent, allowing us to see the county map behind the state map. 
+
+```{r}
+## BE SURE to notice that two different data sets are being used in the two geom_polygon levels.
+all_county <- map_data("county")
+ggplot() + 
+  geom_polygon(data = all_county, aes(x = long, y = lat, group = group),
+               color = "darkblue", fill = "lightblue", size = .1) +
+  geom_polygon(data = main_states, aes(x = long, y = lat, group = group),
+                color = "black", fill = "lightblue",  size = .5, alpha = .1) 
+```
+
+
+### 4. Adding points to your choropleth map
+
+The `maps` package also includes a `us.cities` file. The following code adds a point for each major city in the United States. Notice that the size of the point is determined by the population of that city.
+
+```{r}
+#plot all states with ggplot
+p <- p + geom_point(data = us.cities, aes(x = long, y = lat, size = pop)) + 
+  scale_size(name = "Population")
+p
+
+us.cities2 = arrange(us.cities, long)
+head(us.cities2)
+```
+
+It appears that the `us.cities` file includes cities in Hawaii and in Alaska. We will again use data transformation commands to eliminate these four cities and make a final map of just the mainland.
+
+```{r}
+#plot all states with ggplot
+main_cities <- filter(us.cities, long >= -130)
+glimpse(us.cities)
+glimpse(main_cities)
+
+g <- ggplot()
+g <- g + geom_polygon(data = merged_states,
+            aes(x = long, y = lat, group = group, fill = population/1000000), 
+            color = "black", size = 0.2) + 
+      scale_fill_continuous(name = "State Population", low = "lightblue", 
+            high = "darkblue", limits = c(0,40), breaks=c(5, 10, 15, 20, 25, 30, 35), 
+            na.value = "grey50") +
+      labs(title = "Population (in millions) in the Mainland United States")
+g
+
+g <- g + geom_point(data = main_cities, aes(x = long, y = lat, size = pop/1000000), 
+            color = "red", alpha = .5) + scale_size(name = "City Population")
+g
+
+# Zoom into a particular region of the plot
+g  <- g + coord_cartesian(xlim=c(-80, -65), ylim = c(38, 46)) + 
+  labs(title = "Population (in millions) of Northeastern United States")
+g
+```
+
+
+
+### 5. On your own
+
+* Restrict the `states` and `all.cities` files to only a few contiguous states, such as the New England states: New York, Vermont,  New Hampshire, Massachusetts, Rhode Island, and Connecticut. You could use the following code:  
+
+
+```{r eval=FALSE}
+ne_states <- filter(merged_states, region ==  "new york" | region == "vermont" |
+                      region ==  "new hampshire" | region == "massachusetts" | 
+                      region ==  "rhode island" | region ==  "connecticut" )
+```
+
+* Create a map of these states and color each state by the number of electoral votes in that state.  
+
+* Add a point to represent each city in these states.  
+
+* Color the cities so that state capitals are clearly differentiated from other cities. In the `geom_point` you may want to use something like the following code:  
+
+```{r eval=FALSE}
+g <- g + geom_point(data= main_cities, aes(x = long, y = lat, 
+                    size = pop/1000000, color = factor(capital), shape = factor(capital)), 
+                    alpha = .5) + 
+                scale_size(name = "City Population")
+```
+
+
+
+
+
+### Additional Resources
+
+
+* https://ggplot2.tidyverse.org/reference/: A well-documented list of ggplot2 components with descriptions 
+
+* http://www.statmethods.net/advgraphs/ggplot2.html: Quick-R introduction to graphics
+
+* http://stackoverflow.com/tags/ggplot2: Stackoverflow, an online community to share information. 
+
+* http://www.cookbook-r.com/Graphs/: R Graphics Cookbook, a text by Winston Chang
+
+
+### Acknowledgements  
+
+This tutorial adapts the [Introduction to Creating Maps with ggplot2](https://github.com/ds4stats/r-tutorials)
+tutorial developed in collaborative work across Grinnell College (Shonda Kuiper), Lawrence University (Adam Loy) and Carleton College (Laura Chihara) funded by grants from the ACM and the Teagle Foundation. Their work is licensed under a [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-nc-sa/4.0/).

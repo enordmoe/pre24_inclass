@@ -1,0 +1,56 @@
+---
+title: Data Transformation Part 2 Practice
+subtitle: Analysis of vehicles data
+author: "Your Name Here"
+date: "`r Sys.Date()`"
+output: 
+  github_document: 
+    fig_height: 4
+    fig_width: 9
+    toc: true
+    toc_depth: 2
+---
+
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(fueleconomy)  
+```
+
+Use data transformations and visual tools where needed to obtain the following:
+
+# Question 1  
+
+1. All years for which Pontiac Vibe data is available. Display the results with the most recent years at the top.  
+
+```{r}
+
+```
+
+# Question 2  
+
+2. 
+
+a. First, determine the years in which Hybrid vehicles appear (use `filter()` with the `str_detect()` function. To avoid tricky programming at this point in the course, you can manually note which years had Hybrid vehicles for use in part (b)
+
+```{r}
+
+```
+
+
+b. Use `filter()` with `%in%` or use the `between()` function to filter all vehicles produced in these years and then find those with the minimum and maximum city mileage for each of these years. Display the values of year, make, model, and city mileage in order from oldest to newest.  
+
+```{r}
+
+```
+
+# Question 3  
+
+3. Identify the 5 make/model combinations with the most observations and save the names of the makes and models in a data set. Use these names to filter (Hint: `%in%`) these vehicles and create a variable called mid_mileage that is the average of cty and hwy mileage. Pipe these cases into a `ggplot` command that creates a `stat_summary()` plot faceted by make/model. If the dots are too large, see if you can figure out show to strink them.  
+
+```{r}
+
+
+```
+

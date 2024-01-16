@@ -1,0 +1,301 @@
+---
+title: "In-class Visualisation of mpg data Using ggplot2" 
+subtitle: "Facets, Geoms, and Transformations"
+author: "MATH 265: Intro to Data Science"
+date: "`r Sys.Date()`"
+output: 
+  github_document: 
+    fig_height: 4
+    fig_width: 9
+    toc: true
+    toc_depth: 2
+---
+
+### Setup Chunk
+
+Use this chunk to set any global options. `echo=TRUE` means we'll see all the code chunks unless we specify otherwise.  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+To use **ggplot2** functions, we always have to first load the **tidyverse** package:  
+```{r, message = FALSE}
+library(tidyverse)
+```
+
+
+# Simple Scatterplot   
+
+First start with a simple plot that we've seen before, exploring the relationship between engine displacement (`displ`) and highway mileage `hwy`. :  
+
+```{r}
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x = displ, y = hwy))
+```
+
+Before we get into faceting, hote that as long as the arguments are in the default order, we can drop the `name =` to save typing. So the chunk above is equivalent to: 
+
+```{r}
+ggplot(mpg) +
+  geom_point(aes(x = displ, y = hwy))
+```
+
+
+But  note that you can drop the argument names but you can't drop the `aes`. 
+
+# Facets  
+
+
+## Using `facet_wrap()`  
+
+For looking at a graph for subsets determined by a single variable, `facet_wrap()` is a good place to start.
+
+Let's consider whether the relationship between these two variables depends on `class`, the "type" of car:  
+
+```{r}
+ggplot(mpg) +
+  geom_point(aes(displ, hwy)) + 
+  facet_wrap(~class)
+```
+
+Pretty cool, eh? What do you notice?  (We should add better labeling but we'll come back to that later.)
+
+Be sure to notice the tilde in front of the variable name (`~class`). This is required to identify what follows as a "formula" which is a specific "object class" that R expects to see here. (Actually, if you check the help on this function, you'll see that there's a newer way of specifying faceting variables that involves "quoting" using the `vars()` function but we'll use formulas for consistency with the text.)
+
+
+
+Here's a more ambitious faceting graph that shows that facet wrapping can be used even with a large number of categories. Using facet wrapping is much better than  mapping `manufacturer` to `color`. Why?  (Try a single plot with a different color for each manufacturer).
+
+
+```{r}
+ggplot(mpg) +
+  geom_point(aes(displ, hwy)) + 
+  facet_wrap(~manufacturer)
+```
+
+Aside: What hint do we get from this picture that we have multiple points for some models? 
+
+
+
+**Aside: Danger zone**: . What's going on here?  How could we fix it?
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(aes(displ, hwy, color = "manufacturer"))
+```
+
+
+##  Using `facet_grid()`  
+
+
+
+```{r}
+ggplot(mpg) +
+  geom_point(aes(displ, hwy)) + 
+  facet_grid(year~class)
+```
+
+
+
+Can you identify the problems with this graph?  
+
+```{r, eval = FALSE}
+ggplot(mpg) +
+  geom_point(aes(displ, hwy)) + 
+  facet_grid(manufacturer~model)
+```
+
+
+
+### Row- and Column-Wise Faceting Using `facet_grid()`  
+
+When there is interest in comparing the graphs vertically or horizontally to focus on the `y` or `x` axis, the `facet_grid()` function can be used as the following examples illustrate:  
+
+
+**Faceting column-wise**
+
+```{r}
+ggplot(mpg) +
+  geom_point(aes(displ, hwy)) + 
+  facet_grid(.~ class)
+```
+
+**Faceting row-wise**
+
+```{r}
+ggplot(mpg) +
+  geom_point(aes(displ, hwy)) + 
+  facet_grid(drv ~ .)
+```
+
+
+### `facet_wrap()` with Nesting  
+
+One trick for faceting when two variables when not all combinations of the two variables appear (or simply for reasons of preference), the formula notation can include more than one variable after the tilde (`~`). Here's an example. Note that graphs have been constructed for all combinations of `drv` and `class` that appear in the data. Since some combinations do not occur (e.g., 2 seater with 4-wheel drive), the number of graphs shown is less than the product of the number of categories in each variable (that would be $3 \times 7 = 21$ for these data).
+
+
+```{r}
+ggplot(mpg) +
+  geom_point(aes(displ, hwy)) + 
+  facet_wrap(~class + drv)
+```
+
+
+
+### Faceting with a Quantitative variable 
+
+This doesn't really work:
+
+```{r}
+ggplot(mpg) +
+  geom_point(aes(displ, hwy)) + 
+  facet_wrap(~cty)
+```
+
+But here's another approach in such situations.  The command `cut_number(cty, 3)` cuts the range of the `cty` variable into sub-intervals that each contain about 1/3 of the data.    
+
+```{r}
+ggplot(mpg) +
+  geom_point(aes(displ, hwy)) + 
+  facet_wrap(~cut_number(cty, 3))
+```
+
+Try it on your own but use `cut_interval(cty, 3)` instead. What do you think this command does?  Which do you prefer in this instance?  
+
+
+# Using `geom_smooth()`
+
+The `geom_smooth()` object plots a line fitted to the data showing the general pattern in a scatterplot on a pair of axes. Let's look at some examples for a familiar case.  
+
+## Adding a smooth curve  
+
+```{r}
+ggplot(mpg) +
+  geom_point(aes(cty, hwy)) + 
+  geom_smooth(aes(cty, hwy))
+```
+
+A few things to note here:  
+1. We are told the default method of smoothing is "loess". 
+2. We might want to turn off messages for this plot.  
+3. Note duplication in the code.  
+
+Repeat the last command showing that it is more efficient to set "global" options in the base layer.
+
+```{r, message = FALSE}
+ggplot(mpg, aes(cty, hwy)) +
+  geom_point() + 
+  geom_smooth()
+```
+
+Great, now let's see how to plot a least squares regression line overlay.  
+
+```{r, message = FALSE}
+ggplot(mpg,aes(cty, hwy)) +
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE )
+```
+
+Setting `se = FALSE` turns off the shaded standard error region.  
+
+## More Smoothing Examples  
+
+```{r, message = FALSE}
+ggplot(mpg,aes(cty, hwy)) +
+  geom_smooth() + 
+  labs(title = "Smoother without points")
+```
+
+
+```{r, message = FALSE}
+ggplot(mpg) +
+  geom_smooth(aes(cty, hwy, color = drv)) + 
+  labs(title = "Smoothers for each subgroup")
+```
+
+
+```{r, message = FALSE}
+ggplot(mpg, aes(cty, hwy, color = drv)) +
+  geom_point() +
+  geom_smooth(method = "lm") + 
+  labs(title = "Regression lines for each subgroup")
+```
+
+Note the granularity in the graph. We'll deal with that next time.  
+
+Here's one more:
+
+```{r, message = FALSE}
+ggplot(mpg, aes(cty, hwy, color = drv, linetype = drv)) +
+  geom_point() +
+  geom_smooth() + 
+  labs(title = "Regression lines for each subgroup with different colors and linetypes") 
+```
+
+
+For more practice, try the plots in Question #6 of the Section 3.6.1 exercises.  
+
+
+# Creating Bar Charts and their friends in R 
+
+To summarize the frequencies for a categorical variable, we can use a simple bar chart.  
+
+```{r, message=FALSE}
+ggplot(mpg, aes(x = class)) + 
+  geom_bar() + 
+  labs(title = "Number of Cars by Class")
+```
+
+## Aesthetics and Bar Charts  
+
+Stylistically, we might want a colorful plot. We can do that using aesthetics but note that we probably want `fill` instead of `color` when working with a barplot.     
+
+```{r, message=FALSE}
+ggplot(mpg, aes(x = class, color = class)) + 
+  geom_bar() 
+ggplot(mpg, aes(x = class, fill = class)) + 
+  geom_bar() 
+```
+
+
+We could also plot the proportions instead of the frequencies as suggested in our text using the function `stat()`. 
+
+```{r}
+ggplot(mpg, aes(x = class)) +
+  geom_bar(mapping = aes(x = class, y = stat(prop), group = 1))
+```
+
+This works because we make use of the "computed variable" `prop` available when we call the `geom_bar()` function. What happens if you omit the `group = 1` term? 
+
+We'll see  more of bar charts when we talk about `position` adjustments. 
+
+##  Extensions: Use of other `stat_XXXX()` functions 
+
+**Extension 1:**  
+
+Here's an example of using the `summary` stat to create a non-standard kind of plot:  
+
+```{r}
+ggplot(data = mpg) + 
+  stat_summary(mapping = aes(x = class, y = hwy), 
+               fun.min = min,
+               fun.max = max,
+               fun = median
+               )
+```
+
+This plot could be customized further since `stat_summary` allows user-defined functions.
+
+
+
+**Extension 2:**  
+
+How would we plot the average highway mileage for each class? There's certainly new stuff here but it shows the use of a computed function. What is plotted on the `y` axis is the mean of the y aesthetic. 
+
+```{r}
+ggplot(mpg, aes(x = class, y = hwy)) + 
+  geom_bar(stat = "summary", fun = mean)
+```
+
+This would be useful for plotting the average of a continuous variable for all categories of a categorical variable. 

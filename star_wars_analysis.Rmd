@@ -1,0 +1,133 @@
+---
+title: "Star Wars Characters Analysis Using ggplot2"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: 
+  github_document: 
+    fig_height: 4
+    fig_width: 9
+---
+
+Use this chunk to set any global options. `echo=TRUE` means we'll see all the code chunks unless we specify otherwise.  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+To use `ggplot2` functions, we always have to first load the `tidyverse`:  
+```{r}
+library(tidyverse)
+```
+
+For help with  `ggplot2`, see [ggplot2.tidyverse.org](http://ggplot2.tidyverse.org/) and the `ggplot2` Cheatsheet [here](https://posit.co/wp-content/uploads/2022/10/data-visualization-1.pdf) last updated August 2021.
+
+
+This document will introduce elements of the grammar of graphics using `ggplot2`.  
+
+## Introduction to the Starwars Data Frame  
+
+The data set `starwars` is a built-in data set that's available after loading the `tidyverse` family of packages as we did above.  Let's take a look at it:
+
+```{r}
+starwars
+```
+
+Questions:  
+
+* How many rows? 
+* How many columns? 
+* What do the rows represent?  
+* What do the columns represent?  
+
+### Getting a Feel for the Data Set
+
+The `glimpse` commands also help give us a feel for the basic characteristics of the data.  This command essentially transposes the print command so that the rows are the data columns, showing as much of the data as possible in a small area.
+
+```{r}
+glimpse(starwars)
+```
+
+Fortunately, most built-in R functions have help documentation to give more details. We typically run this at the command line. I've set `eval = FALSE` so that this command doesn't run if you knit the document.  
+
+```{r, eval=FALSE}
+?starwars
+```
+
+
+## Using ggplot2 to explore the data
+
+
+### Simple scatterplot using geom_point()  
+
+```{r}
+ggplot(data = starwars, mapping = aes(x = height, y = mass)) +
+  geom_point()
+```
+
+
+Question: Which is the unusual character? How did you figure it out?  
+
+For reporting, we'd prefer to get rid of that warning message:  
+
+```{r, warning=FALSE}
+ggplot(data = starwars, mapping = aes(x = height, y = mass)) +
+  geom_point()
+```
+
+
+As an aside, you can start learning about chunk options to control the size and aspect ratio of your plots:  
+
+```{r, fig.width = 6, fig.height = 2, warning=FALSE}
+ggplot(data = starwars, mapping = aes(x = height, y = mass)) +
+  geom_point()
+```
+
+
+Graphs are not complete without labeling. That comes in another layer of the grammar of graphics, the thematic elements (more about that later). Here's an example: 
+
+```{r, warning = FALSE}
+ggplot(data = starwars) +
+  geom_point(mapping = aes(x = height, y = mass)) +
+  labs(title = "Scatterplot of Weight (y) vs. Height (x) of Starwars characters",
+       x = "Height (cm)", y = "Weight (kg)")            
+```
+
+**Note**: Labels are just text and do not need to use the original variable names. Lots more options of labels are available.  
+
+### Getting started with aesthetic mapping 
+
+Aesthetic mapping involves using aesthetic features of the graph (shape, color, etc.) to represent information about a variable. Here are some examples to get you started.  
+
+#### Use gender to color the points
+
+```{r,  warning=FALSE}
+ggplot(data = starwars) + 
+  geom_point(mapping = aes(x = height, y = mass, color = gender))
+```
+
+
+#### Use size of the point to represent year of birth 
+
+```{r,  warning=FALSE}
+ggplot(data = starwars) + 
+  geom_point(mapping = aes(x = height, y = mass, color = gender, size = birth_year))
+```
+
+#### Use shape to represent gender and color to  represent year of birth 
+
+```{r,  warning=FALSE}
+ggplot(data = starwars) + 
+  geom_point(mapping = aes(x = height, y = mass, color = birth_year, shape = gender))
+```
+
+
+#### Aesthetics WITHOUT mapping
+
+Set the size of all points to have size 3mm:
+
+```{r, warning=FALSE}
+ggplot(data = starwars) +
+  geom_point(mapping = aes(x = height, y = mass, color = gender), size = 3)
+```
+
+**Note**: In such as case, we generally need to set the aesthetic **outside** the `aes()` function. Details of this will get clarified as we go forward.  

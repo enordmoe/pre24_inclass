@@ -1,0 +1,295 @@
+---
+title: "Model Basics Using Data Scraped from Cars.com"
+subtitle: "Your name here"
+date: "March 2023"
+output: 
+  html_document: 
+    fig_height: 3.5
+    fig_width: 7
+    theme: yeti
+    toc: true
+    toc_float: true
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rvest)
+library(modelr)
+```
+
+## Acknowledgements
+
+This introduction to modeling adapts Grolemund and Wickham's R4DS material from Chapter 23.1-3 using real data from cars.com rather than the simulated data used there. Much of the accompanying narrative is from the R4DS text.
+
+## Scraping the Data
+
+The website [cars.com](http://cars.com) provides data on cars for sale including detailed data on the features of the cars.
+
+The data set `camry_data.csv` was scraped from the cars.com website and contains data on the year, price `y` in (\$000s) and miles `x` in (000s) of 2010-2015 used Toyota Camry cars for sale in the Chicago area (near zip code 60610). The script below combines the variables into a single tibble called **camry_data** and uses the built-in linear models function `lm()` to fit the least squares regression.
+
+```{r}
+
+camry_data <- read_csv("data/camry_data.csv")
+
+ggplot(camry_data, aes(x, y)) +
+  geom_point() +
+  geom_smooth(color = "red") + 
+  geom_smooth(method = "lm", color = "blue")
+
+
+mod1 =  lm(y ~ x, data = camry_data)
+summary(mod1)
+```
+
+In what follows, we see a more general approach to model-fitting as in the text discussion.
+
+## Fitting a Simple Model: Using the Cars Data
+
+Plot the data:
+
+```{r}
+ggplot(camry_data, aes(x, y)) + 
+  geom_point()
+```
+
+Generate possible models using hypothetical coefficients:
+
+```{r}
+models <- tibble(
+  a1 = runif(500, -10, 40),
+  a2 = runif(500, -0.27, 0.13)
+)
+ggplot(camry_data, aes(x, y)) + 
+  geom_abline(aes(intercept = a1, slope = a2), data = models, alpha = 1/4) +
+  geom_point() 
+```
+
+### Plot Distances from Line
+
+```{r}
+dist1 <- camry_data %>% 
+  mutate(
+    pred = 17.9 + (-.071)* x
+  )
+
+ggplot(dist1, aes(x, y)) + 
+  geom_abline(intercept = 17.9, slope = -.071, color = "grey40") +
+  geom_point(color = "grey40") +
+  geom_linerange(aes(ymin = y, ymax = pred), color = "#3366FF") 
+
+```
+
+This distance is just the difference between the $y$ value given by the model (the prediction), and the actual $y$ value in the data (the response).
+
+```{r}
+## ------------------------------------------------------------------------
+model1 <- function(a, data) {
+  a[1] + data$x * a[2]
+}
+# Print the first few predicted values
+head(model1(c(17.9, -.071), camry_data))
+```
+
+### Create a Function to Compute Distance Measure
+
+Next, we need some way to compute an overall distance between the predicted and actual values. In other words, the plot above shows 100 distances: how do we collapse that into a single number?
+
+We use the "root-mean-squared deviation". We compute the difference between actual and predicted, square them, average them, and the take the square root.
+
+```{r}
+measure_distance <- function(mod, data) {
+  diff <- data$y - model1(mod, data)
+  sqrt(mean(diff ^ 2))
+}
+measure_distance(c(17.9, -.071), camry_data)
+```
+
+### Using **purrr** to map the distance function
+
+Now we can use the **purrr** package function `map2_dbl` to compute the distance for all the models defined above. We need a helper function because our distance function expects the model as a numeric vector of length 2.
+
+```{r}
+# function that calls the distance function
+camry_dist <- function(a1, a2) {
+  measure_distance(c(a1, a2), camry_data)
+}
+
+# Uses coefficients generated above as inputs to the distance function
+models <- models %>% 
+  mutate(dist = map2_dbl(a1, a2, camry_dist))
+models
+```
+
+Next, overlay the 10 best models onto the data.The models are colored by `-dist` to make sure that the best models (i.e. the ones with the smallest distance) get the brightest colors.
+
+```{r}
+ggplot(camry_data, aes(x, y)) + 
+  geom_point(size = 2, color = "grey30") + 
+  geom_abline(
+    aes(intercept = a1, slope = a2, color = dist), 
+    data = filter(models, rank(dist) <= 10)
+  )
+```
+
+We can also think about these models as observations, visualizing with a scatterplot of `a1` vs `a2`, again colored by `-dist`. We can no longer directly see how the model compares to the data, but we can see many models at once. Again, the 10 best models are highlighted, this time by drawing red circles underneath them.
+
+```{r}
+ggplot(models, aes(a1, a2)) +
+  geom_point(data = filter(models, rank(dist) <= 10), size = 4, color = "red") +
+  geom_point(aes(color = -dist))
+```
+
+### Grid Search for Optimal Coefficients
+
+Instead of trying lots of random models, we could be more systematic and generate an evenly spaced grid of points (this is called a grid search). I picked the parameters of the grid roughly by looking at where the best models were in the plot above.
+
+```{r}
+grid <- expand.grid(
+  a1 = seq(10, 25, length = 25),
+  a2 = seq(-.15, 0, length = 25)
+  ) %>% 
+  mutate(dist = map2_dbl(a1, a2, camry_dist))
+
+grid %>% 
+  ggplot(aes(a1, a2)) +
+  geom_point(data = filter(grid, rank(dist) <= 10), size = 4, color = "red") +
+  geom_point(aes(color = -dist)) 
+```
+
+We see that if we overlay the best 10 models back on the original data, they all look pretty good:
+
+```{r}
+ggplot(camry_data, aes(x, y)) + 
+  geom_point(size = 2, color = "grey30") + 
+  geom_abline(
+    aes(intercept = a1, slope = a2, color = -dist), 
+    data = filter(grid, rank(dist) <= 10)
+  )
+```
+
+### Using an Optimizer (`optim()`) to find Optimal Coefficients
+
+You could imagine iteratively making the grid finer and finer until you narrowed in on the best model. But there's a better way to tackle that problem: a numerical minimization tool called *Newton-Raphson* search. The intuition of Newton-Raphson is pretty simple: you pick a starting point and look around for the steepest slope. You then ski down that slope a little way, and then repeat again and again, until you can't go any lower. In R, we can do that with `optim()` and we get the same value we :
+
+```{r}
+best <- optim(c(0, 0), measure_distance, data = camry_data)
+best$par
+```
+
+```{r}
+ggplot(camry_data, aes(x, y)) + 
+  geom_point(size = 2, color = "grey30") + 
+  geom_abline(intercept = best$par[1], slope = best$par[2], color = "violet", linetype=2)
+```
+
+The `optim()` function identifies the parameter estimates that minimize the root-mean-square error criterion.
+
+Since this is a linear model, in this special case we can use the R `lm()` function to fit the model:
+
+```{r}
+camry_mod <- lm(y ~ x, data = camry_data)
+coef(camry_mod)
+```
+
+These are indeed the same values we got with the general purpose function `optim()`! While `lm()` is faster for a linear model, a general optimization function like `optim()` is useful for fitting a wide variety of functions.
+
+## Visualizing Models
+
+We proceed to focus on understanding a model by looking at its predictions to help us visualize the relationship we've fitted. It's will also be useful to see what the model doesn't capture by looking at the prediction errors called *residuals*. They show what is left after subtracting the predictions from the data. Residuals are powerful because they allow us to use models to remove striking patterns so we can study the subtler trends that remain.
+
+### Generating Predictions
+
+To visualize the predictions from a model, we start by generating an evenly spaced grid of values that covers the region of the data using `data_grid()` from the **modelr** package.
+
+```{r}
+grid <- camry_data %>% 
+  data_grid(x) 
+grid
+```
+
+Since we have only one predictor variable $x$, we simply get the $x$ vector back.
+
+Next we add predictions to `grid` using `modelr::add_predictions()` which takes a data frame and a model. It adds the predictions from the model to a new column in the data frame:
+
+```{r}
+grid <- grid %>% 
+  add_predictions(camry_mod)
+grid
+```
+
+(Note that this function can also be used to add a column of predictions to the original data set).
+
+Next, we plot the predictions along with our observed **camry_data** using the newly created data frame:
+
+```{r}
+ggplot(camry_data, aes(x)) +
+  geom_point(aes(y = y)) +
+  geom_line(aes(y = pred), data = grid, color = "red", size = 1)
+```
+
+While more work than simply using `geom_abline()` or `geom_smooth(method = "lm")`, this approach is very versatile and could be used for many non-linear models.
+
+### Residuals
+
+The flip-side of predictions are residuals. The predictions tells you the pattern that the model has captured, and the residuals tell you what the model has missed. The residuals are just the distances between the observed and predicted values that we computed above.
+
+We add residuals to the data with `add_residuals()`, which works much like `add_predictions()`. Note, however, that we use the original dataset because we need actual $y$ values to compute residuals.
+
+```{r}
+camry_data <- camry_data %>% 
+  add_residuals(camry_mod)
+camry_data 
+```
+
+There are a few different ways to understand what the residuals tell us about the model. One way is to simply draw a frequency polygon to help us understand the spread of the residuals:
+
+```{r}
+ggplot(camry_data, aes(resid)) + 
+  geom_freqpoly(binwidth = 0.5)
+```
+
+This helps you calibrate the quality of the model: how far away are the predictions from the observed values? Note that the average of the residual will always be 0.
+
+We often create plots using the residuals instead of the original predictor to study the possible presence of systematic errors.
+
+```{r}
+ggplot(camry_data, aes(x, resid)) + 
+  geom_ref_line(h = 0) +
+  geom_point() 
+```
+
+## On Your Own
+
+### Exercise 1.
+
+One downside of the linear model is that it is sensitive to unusual values because the distance incorporates a squared term. Fit a linear model to the simulated data below, and visualize the results. Rerun a few times to generate different simulated datasets. What do you notice about the model?
+
+```{r}
+sim1a <- tibble(
+  x = rep(1:10, each = 3),
+  y = x * 1.5 + 6 + rt(length(x), df = 2)
+)
+```
+
+**Answer:**
+
+### Exercise 2.
+
+One way to make linear models more robust is to use a different distance measure. For example, instead of root-mean-squared distance, you could use mean-absolute distance:
+
+```{r, eval = FALSE}
+measure_abs_distance <- function(mod, data) {
+  diff <- data$y - model1(mod, data)
+  mean(abs(diff))
+}
+
+```
+
+Use `optim()` to fit this model to the simulated data above and compare it to the linear model.
+
+### Exercise 3.
+
+Instead of using `lm()` to fit a straight line, you can use `loess()` to fit a smooth curve. Repeat the process of model fitting, grid generation, predictions, and visualization on the `camry_data` using `loess()` instead of `lm()`. How does the result compare to `geom_smooth()`?
+
+**Answer:**
